@@ -1,0 +1,71 @@
+# Push a tag like v0.5.1 (matching "version" in vodblur/manifest.json) to
+# submit the new version to both stores, fire and forget:
+# - Firefox: addons.mozilla.org, as a listed (public) add-on. Mozilla reviews
+#   it, publishes it on AMO and updates installed copies.
+# - Chrome: the Chrome Web Store, which does the same after Google's review.
+# The GitHub Release keeps the Chrome zip for reference.
+#
+# The AMO listing text and categories come from .github/amo-metadata.json and
+# are sent with every release, so the repo is the source of truth for them.
+#
+# Needs repo secrets AMO_JWT_ISSUER and AMO_JWT_SECRET
+# (addons.mozilla.org > Developer Hub > Tools > Manage API Keys), and for
+# Chrome CWS_SERVICE_ACCOUNT_KEY and CWS_PUBLISHER_ID (see README, Releasing).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Check tag matches manifest version
+        run: |
+          VERSION=$(node -p "require('./vodblur/manifest.json').version")
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match manifest version $VERSION"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Lint
+        run: npx --yes web-ext@10.7.0 lint --source-dir vodblur
+
+      - name: Build Chrome zip
+        run: |
+          node .github/scripts/build-chrome.mjs dist/chrome
+          (cd dist/chrome && zip -qr "../vodblur-chrome-$VERSION.zip" .)
+
+      - name: Create GitHub Release
+        run: gh release create "$GITHUB_REF_NAME" "dist/vodblur-chrome-$VERSION.zip" --title "VOD Blur $VERSION" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # --approval-timeout 0: submit and don't wait for Mozilla's review.
+      - name: Submit to addons.mozilla.org (listed)
+        run: >
+          npx --yes web-ext@10.7.0 sign --source-dir vodblur --channel listed
+          --amo-metadata .github/amo-metadata.json --approval-timeout 0
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+
+      # Runs even if the AMO submission failed, so one store never holds back the other.
+      # Without the two secrets this step skips with a warning.
+      - name: Submit to Chrome Web Store
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/chrome-publish.mjs "dist/vodblur-chrome-$VERSION.zip"
+        env:
+          CWS_SERVICE_ACCOUNT_KEY: ${{ secrets.CWS_SERVICE_ACCOUNT_KEY }}
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}

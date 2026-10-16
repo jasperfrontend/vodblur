@@ -1,0 +1,9 @@
+// Cloudflare deploy config for vodblur.com: a Worker with only static assets, no code.
+// Serves site/ and nothing else, so the extension source isn't published on the domain.
+{
+  "name": "vodblur",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./site"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "categories": {
+    "firefox": ["privacy-security", "photos-music-videos"]
+  },
+  "summary": {
+    "en-US": "Blur or cover any part of a video or web page, like burned-in chat, names, addresses or order numbers, before your stream sees it. Shapes stick to the video or the page and scroll along.",
+    "nl": "Blur of bedek elk deel van een video of webpagina, zoals ingebrande chat, namen, adressen of ordernummers, voordat je stream het ziet. Vlakken blijven aan de video of de pagina vastzitten en scrollen mee."
+  },
+  "description": {
+    "en-US": "VOD Blur lets you draw a shape over any part of a video or web page and blur it, or cover it with a solid color. Built for streamers: whatever you blur in your browser is blurred on your stream and in your VODs too.\n\nWHAT STREAMERS USE IT FOR\n• Reacting to videos and VODs: hide burned-in chat, alerts, usernames, watermarks and spoilers.\n• Shopping on stream: cover your shipping address, phone number, email, order numbers and card digits at checkout.\n• Browsing live: blur DM sidebars, notifications, comments, recommended feeds and dashboard numbers.\n\nHOW IT WORKS\n1. Click the VOD Blur icon to open the editor on the current page.\n2. Draw a rectangle, ellipse, triangle or freehand shape, or click a part of the page to cover exactly that element.\n3. Choose a blur strength or a solid color. The color picker reads straight from the page with a magnifier and can average up to 15×15 pixels, so a cover blends in with compressed video.\n4. Save it for this page, this section of the site, or the whole site. Next time you open it, your shapes are already there.\n\nDETAILS\n• Sticks to what it covers: on a video, shapes follow the actual picture, also in theater mode and fullscreen. On a page, they stick to the element underneath and scroll along with it, even inside a scrolling chat list.\n• Edit any time: move, resize, nudge with the arrow keys, delete.\n• Alt+Shift+H shows or hides all shapes for a moment.\n• An overview page lists every saved shape per site.\n• Available in English and Dutch.\n\nPRIVATE BY DESIGN\nNo account, no analytics, no servers. Your shapes are stored in your own browser and never leave it. Open source (MIT): https://github.com/jasperfrontend/vodblur\n\nTip: draw your shapes before you go live and check them in your OBS preview. VOD Blur is a safety net, not a guarantee."
+  },
+  "version": {
+    "license": "MIT",
+    "approval_notes": "No build step and no minified code: the submitted files are the source (https://github.com/jasperfrontend/vodblur). The content script runs on all sites because users draw shapes on any page they choose and saved shapes must reappear when the page loads (run_at document_start, so content is covered before it is painted). tabs.captureVisibleTab is only called when the user opens the color picker; the screenshot stays in memory to pick a color and is discarded. All data is stored locally with storage.local; nothing is transmitted. To test: open any page with a video or text, click the toolbar icon, drag to draw a shape or use the pick tool, then Save."
+  }
+}

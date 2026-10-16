@@ -1,0 +1,63 @@
+# Run by hand: Actions > Chrome Web Store > Run workflow.
+# - check:   read-only. Logs in with the CWS secrets and prints the store item's
+#            status (published version, version in review). Uploads nothing.
+# - publish: builds the Chrome zip from the given tag and submits it for review.
+#            Use it when the release workflow skipped Chrome because an earlier
+#            version was still in review.
+name: Chrome Web Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'check = show the store status, publish = submit a tag'
+        type: choice
+        options: [check, publish]
+        default: check
+      tag:
+        description: 'Tag to publish, e.g. v0.5.1 (only for publish)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  chrome:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check inputs
+        if: inputs.action == 'publish'
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::For publish, give a release tag like v0.5.1 (got '$TAG')"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.action == 'publish' && inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Show store status
+        if: inputs.action == 'check'
+        run: node .github/scripts/chrome-publish.mjs --check
+        env:
+          CWS_SERVICE_ACCOUNT_KEY: ${{ secrets.CWS_SERVICE_ACCOUNT_KEY }}
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+
+      - name: Build and submit
+        if: inputs.action == 'publish'
+        run: |
+          VERSION=$(node -p "require('./vodblur/manifest.json').version")
+          node .github/scripts/build-chrome.mjs dist/chrome
+          (cd dist/chrome && zip -qr "../vodblur-chrome-$VERSION.zip" .)
+          node .github/scripts/chrome-publish.mjs "dist/vodblur-chrome-$VERSION.zip"
+        env:
+          CWS_SERVICE_ACCOUNT_KEY: ${{ secrets.CWS_SERVICE_ACCOUNT_KEY }}
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}

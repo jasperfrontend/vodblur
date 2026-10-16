@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VOD Blur: blur anything on your stream</title>
+  <meta name="description" content="A free browser extension for streamers. Draw a shape over any part of a video or web page and blur or cover it: burned-in chat, usernames, addresses, order numbers. It stays put, even in fullscreen.">
+  <meta property="og:title" content="VOD Blur: blur anything on your stream">
+  <meta property="og:description" content="Draw a shape over any part of a video or web page and blur or cover it before your chat sees it. Free, open source, no data collection.">
+  <meta property="og:url" content="https://vodblur.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://vodblur.com/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="VOD Blur: blur it before chat sees it. A video with its burned-in chat blurred.">
+  <meta property="og:site_name" content="VOD Blur">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://vodblur.com/og.png">
+  <meta name="theme-color" content="#0e0e10">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cdefs%3E%3Cfilter id='b' x='-30%25' y='-30%25' width='160%25' height='160%25'%3E%3CfeGaussianBlur stdDeviation='2.4'/%3E%3C/filter%3E%3C/defs%3E%3Crect x='4' y='8' width='40' height='32' rx='6' fill='%239146ff'/%3E%3Cpath d='M10 18h8M10 24h10M10 30h7' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Crect x='24' y='14' width='14' height='20' rx='3' fill='%23fff' filter='url(%23b)'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0e0e10;
+      --bg-2: #141417;
+      --card: #18181b;
+      --line: #2a2a30;
+      --text: #efeff1;
+      --muted: #adadb8;
+      --faint: #7a7a85;
+      --accent: #9146ff;
+      --accent-2: #bf94ff;
+      --live: #eb0400;
+      --radius: 16px;
+      --wrap: 1120px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 20px; }
+    h1, h2, h3 { line-height: 1.12; letter-spacing: -0.02em; margin: 0; }
+    h2 { font-size: clamp(28px, 4vw, 40px); }
+    h3 { font-size: 19px; letter-spacing: -0.01em; }
+    p { margin: 0; }
+    .muted { color: var(--muted); }
+    .eyebrow { color: var(--accent-2); font-weight: 650; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
+
+    /* ---------------------------------------------------------------- nav */
+    nav { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 19px; text-decoration: none; }
+    .brand svg { width: 30px; height: 30px; }
+    nav .links { display: flex; gap: 24px; font-size: 15px; }
+    nav .links a { color: var(--muted); text-decoration: none; }
+    nav .links a:hover { color: var(--text); }
+
+    /* ---------------------------------------------------------------- hero */
+    .hero { padding: 56px 0 40px; text-align: center; position: relative; }
+    .hero::before {
+      content: ""; position: absolute; inset: -80px 0 auto; height: 520px; z-index: -1;
+      background: radial-gradient(600px 300px at 50% 30%, rgba(145, 70, 255, .28), transparent 70%);
+    }
+    .hero h1 { font-size: clamp(40px, 7vw, 76px); max-width: 15ch; margin: 18px auto 0; }
+    .hero h1 .blurred { filter: blur(7px); transition: filter .5s; }
+    .hero h1:hover .blurred { filter: blur(0); }
+    .hero .lede { max-width: 640px; margin: 22px auto 0; font-size: clamp(17px, 2.2vw, 20px); color: var(--muted); }
+    .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 34px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 22px; border-radius: 12px;
+      font-weight: 650; font-size: 16px; text-decoration: none; border: 1px solid var(--line); background: var(--card);
+      transition: transform .15s, background .15s;
+    }
+    .btn:hover { transform: translateY(-1px); background: #222227; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #a265ff; }
+    .btn svg { width: 22px; height: 22px; flex: none; }
+    .btn small { font-weight: 500; opacity: .75; }
+    .fineprint { margin-top: 14px; font-size: 14px; color: var(--faint); }
+
+    /* ---------------------------------------------------------------- demo */
+    .demo { margin: 40px auto 0; max-width: 980px; }
+    .scenes { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .scenes button, .peek {
+      font: inherit; font-size: 15px; color: var(--muted); background: transparent; cursor: pointer;
+      border: 1px solid var(--line); border-radius: 999px; padding: 7px 16px;
+    }
+    .scenes button[aria-pressed="true"] { color: #fff; background: var(--accent); border-color: var(--accent); }
+    .browser {
+      border-radius: var(--radius); overflow: hidden; border: 1px solid #33333a; background: #1f1f23;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .03);
+      text-align: left;
+    }
+    .chrome-bar { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 14px; background: #2a2a2f; }
+    .dots { display: flex; gap: 7px; }
+    .dots i { width: 11px; height: 11px; border-radius: 50%; background: #45454c; }
+    .url { flex: 1; max-width: 460px; height: 26px; border-radius: 7px; background: #1b1b1f; color: var(--muted); font-size: 13px; padding: 0 12px; display: flex; align-items: center; overflow: hidden; white-space: nowrap; }
+    .onair { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #fff; background: var(--live); padding: 3px 8px; border-radius: 5px; }
+    .onair::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: pulse 1.6s infinite; }
+    @keyframes pulse { 50% { opacity: .3; } }
+
+    /* De scènes schalen mee met hun breedte (cqw), zodat het op een telefoon dezelfde plaat blijft. */
+    .stage { position: relative; aspect-ratio: 16 / 9; container-type: inline-size; overflow: hidden; font-size: 1.5cqw; }
+    .scene { position: absolute; inset: 0; display: none; }
+    .scene.on { display: block; }
+    .mask {
+      position: absolute; border-radius: .5cqw; outline: 2px dashed rgba(255, 255, 255, .85); outline-offset: -1px;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(0, 0, 0, .25);
+      backdrop-filter: blur(1.4cqw); -webkit-backdrop-filter: blur(1.4cqw);
+      transition: backdrop-filter .35s, outline-color .35s, background-color .35s, opacity .35s;
+    }
+    .mask.fill { backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .stage.revealed .mask { backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); outline-color: rgba(229, 72, 77, .9); }
+    .stage.revealed .mask.fill { opacity: 0; }
+    .demo-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+    .demo-foot p { font-size: 15px; color: var(--muted); }
+    .peek[aria-pressed="true"] { color: #fff; border-color: #e5484d; background: rgba(229, 72, 77, .15); }
+
+    /* scene 1: VOD met ingebrande chat */
+    .vod { position: absolute; inset: 0; background: linear-gradient(180deg, #2b5876 0%, #4e4376 55%, #1c1c2b 100%); }
+    .vod .sun { position: absolute; left: 22%; top: 18%; width: 16cqw; height: 16cqw; border-radius: 50%; background: radial-gradient(circle, #ffd27a, #ff8a5b 60%, transparent 62%); }
+    .vod .hill { position: absolute; left: -10%; right: 30%; bottom: 0; height: 38%; background: #1f2a44; border-radius: 50% 50% 0 0; }
+    .vod .hill.b { left: 25%; right: -10%; height: 30%; background: #182036; }
+    .vod .hero-char { position: absolute; left: 34%; bottom: 22%; width: 5cqw; height: 9cqw; border-radius: 2.5cqw 2.5cqw .6cqw .6cqw; background: #f2f2f2; box-shadow: 1.2cqw 0 0 -0.3cqw #c9c9c9; }
+    .vod .hud { position: absolute; left: 2.5%; top: 4%; color: #fff; font-weight: 700; font-size: 1.4cqw; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+    .vod .hp { margin-top: .5cqw; width: 18cqw; height: 1cqw; border-radius: .5cqw; background: rgba(0,0,0,.4); overflow: hidden; }
+    .vod .hp i { display: block; width: 64%; height: 100%; background: #3ee08f; }
+    .burned { position: absolute; right: 2.5%; top: 6%; bottom: 14%; width: 25%; padding: 1cqw; border-radius: .6cqw; background: rgba(10, 10, 14, .55); color: #fff; font-size: 1.25cqw; line-height: 1.5; display: flex; flex-direction: column; justify-content: flex-end; gap: .45cqw; }
+    .burned b { font-weight: 700; }
+    .seek { position: absolute; left: 0; right: 0; bottom: 0; height: 10%; background: linear-gradient(transparent, rgba(0,0,0,.7)); display: flex; align-items: flex-end; padding: 0 2.5% 1.6%; gap: 1.5cqw; color: #fff; font-size: 1.2cqw; }
+    .seek .bar { flex: 1; height: .5cqw; border-radius: .25cqw; background: rgba(255,255,255,.3); position: relative; margin-bottom: .6cqw; }
+    .seek .bar i { position: absolute; inset: 0 58% 0 0; background: var(--accent); border-radius: inherit; }
+
+    /* scene 2: afrekenen */
+    .shop { position: absolute; inset: 0; background: #f4f4f6; color: #18181b; padding: 4% 5%; display: grid; grid-template-columns: 1.3fr 1fr; gap: 3cqw; }
+    .shop h4 { margin: 0 0 1.2cqw; font-size: 2cqw; }
+    .shop .box { background: #fff; border: 1px solid #e3e3e8; border-radius: 1cqw; padding: 1.8cqw; margin-bottom: 1.6cqw; font-size: 1.35cqw; line-height: 1.55; position: relative; }
+    .shop .lbl { color: #6b6b76; font-size: 1.1cqw; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .4cqw; }
+    .shop .item { display: flex; gap: 1.2cqw; align-items: center; margin-bottom: 1.2cqw; font-size: 1.35cqw; }
+    .shop .thumb { width: 5.5cqw; height: 5.5cqw; border-radius: .8cqw; background: linear-gradient(135deg, #9146ff, #ff8a5b); flex: none; }
+    .shop .thumb.b { background: linear-gradient(135deg, #2b5876, #3ee08f); }
+    .shop .row { display: flex; justify-content: space-between; font-size: 1.35cqw; padding: .5cqw 0; }
+    .shop .total { border-top: 1px solid #e3e3e8; margin-top: .8cqw; padding-top: 1cqw; font-weight: 800; font-size: 1.7cqw; }
+    .shop .pay { margin-top: 1.6cqw; background: #18181b; color: #fff; text-align: center; padding: 1.2cqw; border-radius: .8cqw; font-weight: 700; font-size: 1.4cqw; }
+
+    /* scene 3: gewoon browsen */
+    .inbox { position: absolute; inset: 0; display: grid; grid-template-columns: 26% 1fr; background: #ffffff; color: #1d1d22; }
+    .inbox aside { background: #f1f1f4; padding: 2.4cqw 1.8cqw; font-size: 1.35cqw; }
+    .inbox aside .h { font-weight: 800; font-size: 1.6cqw; margin-bottom: 1.4cqw; }
+    .inbox .dm { display: flex; gap: 1cqw; align-items: center; padding: .9cqw 0; border-bottom: 1px solid #e2e2e7; }
+    .inbox .av { width: 3.2cqw; height: 3.2cqw; border-radius: 50%; background: #c9b6ff; flex: none; }
+    .inbox .av.b { background: #ffc7a8; } .inbox .av.c { background: #a8e6c9; } .inbox .av.d { background: #a8cfff; }
+    .inbox .dm small { display: block; color: #6b6b76; font-size: 1.1cqw; }
+    .inbox main { padding: 3cqw 4cqw; }
+    .inbox main h4 { margin: 0 0 1.4cqw; font-size: 2.6cqw; letter-spacing: -0.02em; }
+    .inbox main p { font-size: 1.45cqw; line-height: 1.6; color: #44444d; margin-bottom: 1.4cqw; max-width: 46cqw; }
+    .inbox .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4cqw; margin-top: 2cqw; }
+    .inbox .tiles i { aspect-ratio: 4 / 3; border-radius: 1cqw; background: linear-gradient(135deg, #e8e0ff, #d9f2ff); }
+    .toast { position: absolute; right: 2.5%; top: 4%; width: 30%; background: #18181b; color: #fff; border-radius: 1cqw; padding: 1.4cqw; font-size: 1.25cqw; box-shadow: 0 1cqw 3cqw rgba(0,0,0,.25); }
+    .toast b { display: block; font-size: 1.35cqw; margin-bottom: .3cqw; }
+
+    /* ---------------------------------------------------------------- sections */
+    section { padding: 96px 0 0; }
+    .section-head { max-width: 680px; margin-bottom: 40px; }
+    .section-head p { margin-top: 14px; color: var(--muted); font-size: 18px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
+    .card .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: rgba(145, 70, 255, .15); color: var(--accent-2); margin-bottom: 18px; }
+    .card .ico svg { width: 22px; height: 22px; }
+    .card p { margin-top: 8px; color: var(--muted); font-size: 16px; }
+    .card ul { margin: 14px 0 0; padding: 0; list-style: none; font-size: 15px; color: var(--muted); }
+    .card li { padding: 6px 0; border-top: 1px solid #222228; }
+    .card li::before { content: "▪"; color: var(--accent-2); margin-right: 8px; }
+
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; counter-reset: s; }
+    .step { position: relative; padding-top: 54px; }
+    .step::before {
+      counter-increment: s; content: counter(s); position: absolute; top: 0; left: 0;
+      width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--accent); color: #fff; font-weight: 800;
+    }
+    .step p { margin-top: 8px; color: var(--muted); font-size: 16px; }
+    kbd {
+      font: 600 13px/1 ui-monospace, SFMono-Regular, Consolas, monospace; padding: 3px 6px; border-radius: 5px;
+      background: #26262c; border: 1px solid #3a3a42; border-bottom-width: 2px; color: var(--text);
+    }
+
+    .features { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 48px; }
+    .feature { display: flex; gap: 16px; padding: 22px 0; border-top: 1px solid var(--line); }
+    .feature svg { width: 22px; height: 22px; flex: none; color: var(--accent-2); margin-top: 3px; }
+    .feature p { margin-top: 4px; color: var(--muted); font-size: 16px; }
+
+    .note {
+      margin-top: 40px; padding: 22px 24px; border-radius: var(--radius); display: flex; gap: 16px;
+      background: rgba(245, 177, 76, .08); border: 1px solid rgba(245, 177, 76, .3);
+    }
+    .note svg { width: 24px; height: 24px; flex: none; color: #f5b14c; margin-top: 2px; }
+    .note p { color: #e9d6b5; font-size: 16px; }
+    .note b { color: #fff; }
+
+    details { border-top: 1px solid var(--line); }
+    details:last-of-type { border-bottom: 1px solid var(--line); }
+    summary { cursor: pointer; list-style: none; padding: 20px 0; font-weight: 650; font-size: 18px; display: flex; justify-content: space-between; gap: 16px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--accent-2); font-size: 24px; line-height: 1; transition: transform .2s; }
+    details[open] summary::after { transform: rotate(45deg); }
+    details p { padding: 0 0 22px; color: var(--muted); max-width: 760px; }
+    .faq details { max-width: 860px; }
+
+    .final { text-align: center; padding: 110px 0 100px; }
+    .final h2 { max-width: 18ch; margin: 0 auto; }
+    .final p { margin: 16px auto 0; color: var(--muted); max-width: 560px; }
+
+    footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--faint); font-size: 14px; }
+    footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    footer a { color: var(--muted); }
+    footer .credit { flex-basis: 100%; margin: 0; }
+
+    @media (max-width: 860px) {
+      .grid3, .steps { grid-template-columns: 1fr 1fr; }
+      .features { grid-template-columns: 1fr; }
+      nav .links a:not(.gh) { display: none; }
+    }
+    @media (max-width: 560px) {
+      body { font-size: 16px; }
+      .wrap { padding: 0 16px; }
+      .grid3, .steps { grid-template-columns: 1fr; }
+      section { padding-top: 72px; }
+      .btn { width: 100%; justify-content: center; }
+      .chrome-bar .dots { display: none; }
+      .demo-foot { flex-direction: column; align-items: stretch; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <nav>
+      <a class="brand" href="#">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><defs><filter id="lb" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4"/></filter></defs><rect x="4" y="8" width="40" height="32" rx="6" fill="#9146ff"/><path d="M10 18h8M10 24h10M10 30h7" stroke="#fff" stroke-width="3" stroke-linecap="round"/><rect x="24" y="14" width="14" height="20" rx="3" fill="#fff" filter="url(#lb)"/></svg>
+        VOD Blur
+      </a>
+      <div class="links">
+        <a href="#use">Use cases</a>
+        <a href="#how">How it works</a>
+        <a href="#faq">FAQ</a>
+        <a class="gh" href="https://github.com/jasperfrontend/vodblur">GitHub</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <div class="wrap hero">
+      <span class="eyebrow">Free browser extension for streamers</span>
+      <h1>Blur it before <span class="blurred">chat</span> sees it.</h1>
+      <p class="lede">You react to videos, browse live and buy things on stream. VOD Blur lets you draw a shape over any part of a video or web page and blur it or cover it: burned-in chat, usernames, your address, an order number. It stays exactly where you put it, even in fullscreen.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/jasperfrontend/vodblur#install" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 19h16"/></svg>
+          Get it for Firefox
+        </a>
+        <a class="btn primary" href="https://chromewebstore.google.com/detail/vod-blur/pddbjjnckpkabideenkmlklcpnmfblmd" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5h8.2M9 13.7 4.8 6.5M15 13.7l-4.1 7.2" stroke-linecap="round"/></svg>
+          Get it for Chrome
+        </a>
+      </div>
+      <p class="fineprint">Free and open source. No account, no tracking, nothing leaves your browser.</p>
+
+      <div class="demo">
+        <div class="scenes" role="group" aria-label="Demo scene">
+          <button type="button" data-scene="vod" aria-pressed="true">Reacting to a VOD</button>
+          <button type="button" data-scene="shop" aria-pressed="false">Checking out</button>
+          <button type="button" data-scene="inbox" aria-pressed="false">Browsing live</button>
+        </div>
+        <div class="browser">
+          <div class="chrome-bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="url" id="url">twitch.tv/videos/2049381127</div>
+            <span class="onair">LIVE</span>
+          </div>
+          <div class="stage" id="stage">
+            <!-- Alle namen, adressen en bedragen hieronder zijn verzonnen. -->
+            <div class="scene on" data-scene="vod" data-url="twitch.tv/videos/2049381127" data-caption="Someone else's VOD with their chat burned in. Blur it once; it sticks to the video picture, also in theater mode and fullscreen.">
+              <div class="vod">
+                <div class="sun"></div><div class="hill"></div><div class="hill b"></div><div class="hero-char"></div>
+                <div class="hud">Chapter 3: The Long Climb<div class="hp"><i></i></div></div>
+                <div class="burned">
+                  <div><b style="color:#ff7eb6">pixelpanda</b>: NO WAY he skips that jump</div>
+                  <div><b style="color:#7ee0ff">quietmoth</b>: spoiler: the boss is his brother</div>
+                  <div><b style="color:#ffd27a">grumblebee</b>: KEKW</div>
+                  <div><b style="color:#a5ff7e">lofi_larry</b>: watching from your stream 👋</div>
+                  <div><b style="color:#c9a8ff">tinytoaster</b>: can someone link his discord</div>
+                  <div><b style="color:#ff9a7e">mossyrock</b>: first time here, love it</div>
+                </div>
+                <div class="seek"><span>1:42:08</span><div class="bar"><i></i></div><span>4:03:51</span></div>
+              </div>
+              <div class="mask" data-over=".burned"></div>
+            </div>
+
+            <div class="scene" data-scene="shop" data-url="shop.example/checkout" data-caption="Buying merch or a new mic on stream? Cover your address and email. The email field is covered in a color picked straight from the page, so it simply looks empty.">
+              <div class="shop">
+                <div>
+                  <h4>Checkout</h4>
+                  <div class="box">
+                    <div class="lbl">Ship to</div>
+                    <div class="ship">Sam Rivera<br>42 Example Street, apt 3<br>1234 AB Sampletown<br>+31 6 00 00 00 00</div>
+                  </div>
+                  <div class="box">
+                    <div class="lbl">Email for receipts</div>
+                    <span class="email">sam.rivera.private@example.com</span>
+                  </div>
+                  <div class="box">
+                    <div class="lbl">Order</div>
+                    <div class="order">#NL-4471-0938-2215 · Visa ending 4417</div>
+                  </div>
+                </div>
+                <div>
+                  <h4>Your cart</h4>
+                  <div class="item"><span class="thumb"></span><span>Studio microphone<br><span style="color:#6b6b76">Black · 1×</span></span></div>
+                  <div class="item"><span class="thumb b"></span><span>Pop filter<br><span style="color:#6b6b76">1×</span></span></div>
+                  <div class="row"><span>Subtotal</span><span>€149.00</span></div>
+                  <div class="row"><span>Shipping</span><span>Free</span></div>
+                  <div class="row total"><span>Total</span><span>€149.00</span></div>
+                  <div class="pay">Place order</div>
+                </div>
+              </div>
+              <div class="mask" data-over=".ship" data-pad="0.5"></div>
+              <div class="mask fill" data-over=".email" data-pad="0.3" style="background:#ffffff"></div>
+              <div class="mask" data-over=".order" data-pad="0.5"></div>
+            </div>
+
+            <div class="scene" data-scene="inbox" data-url="community.example/forum/setup-tour" data-caption="Showing a forum or a dashboard? Blur the DMs in the sidebar and the notification that pops up. Saved shapes come back every time you open the site.">
+              <div class="inbox">
+                <aside>
+                  <div class="h">Messages</div>
+                  <div class="dms">
+                  <div class="dm"><span class="av"></span><span>Mira K.<small>hey are we still on for sat?</small></span></div>
+                  <div class="dm"><span class="av b"></span><span>Dad<small>call me when ur off stream</small></span></div>
+                  <div class="dm"><span class="av c"></span><span>Jules (editor)<small>new cut is in the drive</small></span></div>
+                  <div class="dm"><span class="av d"></span><span>Sponsor team<small>contract v3 attached</small></span></div>
+                  </div>
+                </aside>
+                <main>
+                  <h4>My 2026 streaming setup tour</h4>
+                  <p>Chat asked for it, so here it is: every piece of gear on my desk, what I would buy again and what I would skip.</p>
+                  <p>Let's start with lighting, because nothing else matters if your camera can't see you.</p>
+                  <div class="tiles"><i></i><i></i><i></i></div>
+                </main>
+              </div>
+              <div class="toast"><b>New message from Mira K.</b>my new address is 7 Sample Road…</div>
+              <div class="mask" data-over=".dms"></div>
+              <div class="mask" data-over=".toast"></div>
+            </div>
+          </div>
+        </div>
+        <div class="demo-foot">
+          <p id="caption"></p>
+          <button type="button" class="peek" id="peek" aria-pressed="false">Peek underneath</button>
+        </div>
+      </div>
+    </div>
+
+    <section id="use">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow">Use cases</span>
+          <h2>Anything on your screen ends up on stream.</h2>
+          <p>OBS captures whatever your browser shows. VOD Blur changes what your browser shows, so whatever you blur never reaches the stream or the VOD.</p>
+        </div>
+        <div class="grid3">
+          <div class="card">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></svg></div>
+            <h3>Watching videos and VODs</h3>
+            <p>React content without someone else's stream leaking into yours.</p>
+            <ul><li>Burned-in chat and alerts</li><li>Usernames, watermarks, handles</li><li>Spoilers, scores, end-of-video cards</li></ul>
+          </div>
+          <div class="card">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.4 11h11L21 7H6.2"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg></div>
+            <h3>Shopping on stream</h3>
+            <p>Unboxings start at the checkout page. Keep the private bits off camera.</p>
+            <ul><li>Shipping address and phone number</li><li>Email, order and tracking numbers</li><li>Last card digits, account names</li></ul>
+          </div>
+          <div class="card">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg></div>
+            <h3>Browsing live</h3>
+            <p>Reading a forum, checking a dashboard or showing a site with chat.</p>
+            <ul><li>DM sidebars and notifications</li><li>Recommended feeds and comments</li><li>Revenue numbers, email addresses</li></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow">How it works</span>
+          <h2>Draw it once. It comes back on its own.</h2>
+        </div>
+        <div class="steps">
+          <div class="step"><h3>Click the icon</h3><p>The VOD Blur button in your toolbar opens a small panel on top of the page.</p></div>
+          <div class="step"><h3>Draw or click</h3><p>Draw a rectangle, ellipse, triangle or freehand shape, or just click a part of the page to cover exactly that element.</p></div>
+          <div class="step"><h3>Blur or cover</h3><p>Pick a blur strength, or a solid color. The pipette picks a color straight from the page, so a cover blends right in.</p></div>
+          <div class="step"><h3>Save</h3><p>For this one video, a section of the site or the whole site. Next time you open it, the shapes are already there.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow">Details</span>
+          <h2>Built for the way streams actually look.</h2>
+        </div>
+        <div class="features">
+          <div class="feature">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+            <div><h3>Sticks to what it covers</h3><p>On a video, shapes follow the actual picture, black bars excluded, in theater mode and fullscreen too. On a page, they stick to the element underneath and scroll along with it, even inside a scrolling chat list.</p></div>
+          </div>
+          <div class="feature">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14.5 4.5 5 5M17 3.5a2.1 2.1 0 0 1 3 3l-1.5 1.5-3-3zM15.5 6 6 15.5V18h2.5L18 8.5"/></svg>
+            <div><h3>A color picker that reads the page</h3><p>Freeze the page and pick a color with a magnifier. Scroll to average 1, 3×3, up to 15×15 pixels, which beats a single noisy pixel from compressed video.</p></div>
+          </div>
+          <div class="feature">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            <div><h3>One shortcut to hide them all</h3><p><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd> shows or hides every shape on the page for a moment, without deleting anything.</p></div>
+          </div>
+          <div class="feature">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+            <div><h3>Overview per site</h3><p>See every saved shape, grouped by site, and clean up what you no longer need.</p></div>
+          </div>
+          <div class="feature">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+            <div><h3>Private by design</h3><p>No account, no analytics, no servers. Your shapes are stored in your own browser and never leave it.</p></div>
+          </div>
+          <div class="feature">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>
+            <div><h3>Open source</h3><p>MIT licensed and small enough to read in one sitting. Check what it does before you trust it with your stream.</p></div>
+          </div>
+        </div>
+
+        <div class="note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20zM12 10v4M12 17.5v.01"/></svg>
+          <p><b>Set it up before you go live.</b> VOD Blur hides things in your browser, so it hides them on your stream too, but only once the shape is there. Draw your shapes off stream, check them in your OBS preview, and remember that a page can change its layout. It's a safety net, not a guarantee.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="wrap faq">
+        <div class="section-head">
+          <span class="eyebrow">FAQ</span>
+          <h2>Questions</h2>
+        </div>
+        <details>
+          <summary>Is it free?</summary>
+          <p>Yes. VOD Blur is free and open source under the MIT license. There is no paid version.</p>
+        </details>
+        <details id="faq-chrome">
+          <summary>Which browsers does it work in?</summary>
+          <p>Firefox 142 and newer, and Chrome through the <a href="https://chromewebstore.google.com/detail/vod-blur/pddbjjnckpkabideenkmlklcpnmfblmd" target="_blank" rel="noopener">Chrome Web Store</a>. Both are built from the same code. Most other Chromium browsers, such as Brave, Opera and Vivaldi, can install it from the Chrome Web Store too; Edge needs "Allow extensions from other stores" turned on first.</p>
+        </details>
+        <details>
+          <summary>Which sites does it work on?</summary>
+          <p>Any normal web page: Twitch, YouTube, Kick, shops, forums, dashboards. Browsers don't let extensions run on their own internal pages (settings, the add-on store), so those can't be blurred.</p>
+        </details>
+        <details>
+          <summary>Does it change the video for anyone else?</summary>
+          <p>No. It only changes what your browser shows. Your viewers see the blur because they're watching your screen; the original video or page is untouched.</p>
+        </details>
+        <details>
+          <summary>Does it work with Netflix and other DRM video?</summary>
+          <p>Blurring and covering work on any video. The color picker can't read DRM-protected video, because the browser shows that as black in screenshots; pick the color by hand there.</p>
+        </details>
+        <details>
+          <summary>What does it store, and where?</summary>
+          <p>Only your shapes and your last-used settings, in your browser's own extension storage. VOD Blur has no server and sends nothing anywhere.</p>
+        </details>
+      </div>
+    </section>
+
+    <div class="wrap final">
+      <h2>Your next stream, minus the oops.</h2>
+      <p>Install it, draw a shape, save it. Takes about ten seconds.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/jasperfrontend/vodblur#install" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 19h16"/></svg>
+          Get it for Firefox
+        </a>
+        <a class="btn primary" href="https://chromewebstore.google.com/detail/vod-blur/pddbjjnckpkabideenkmlklcpnmfblmd" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5h8.2M9 13.7 4.8 6.5M15 13.7l-4.1 7.2" stroke-linecap="round"/></svg>
+          Get it for Chrome
+        </a>
+        <a class="btn" href="https://github.com/jasperfrontend/vodblur">View the source</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>VOD Blur · MIT license · collects no data</span>
+      <span><a href="privacy.html">Privacy</a> · <a href="https://github.com/jasperfrontend/vodblur">GitHub</a> · <a href="https://github.com/jasperfrontend/vodblur/issues">Report a problem</a></span>
+      <p class="credit">This add-on is made by the same developer who created <a href="https://overlabels.com" target="_blank" rel="noopener">Overlabels</a>.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Demo: scène kiezen en onder de blur kijken.
+    const stage = document.getElementById('stage');
+    const url = document.getElementById('url');
+    const caption = document.getElementById('caption');
+    const peek = document.getElementById('peek');
+    const buttons = document.querySelectorAll('.scenes button');
+
+    function show(name) {
+      for (const s of stage.querySelectorAll('.scene')) {
+        const on = s.dataset.scene === name;
+        s.classList.toggle('on', on);
+        if (on) {
+          url.textContent = s.dataset.url;
+          caption.textContent = s.dataset.caption;
+        }
+      }
+      for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.scene === name));
+      place();
+    }
+
+    // Elk vlak ligt over het element uit data-over, met wat marge (in cqw) eromheen.
+    function place() {
+      const sr = stage.getBoundingClientRect();
+      const cqw = sr.width / 100;
+      for (const m of stage.querySelectorAll('.scene.on .mask')) {
+        const r = m.parentElement.querySelector(m.dataset.over).getBoundingClientRect();
+        const pad = Number(m.dataset.pad || 1) * cqw;
+        m.style.left = r.left - sr.left - pad + 'px';
+        m.style.top = r.top - sr.top - pad + 'px';
+        m.style.width = r.width + pad * 2 + 'px';
+        m.style.height = r.height + pad * 2 + 'px';
+      }
+    }
+    new ResizeObserver(place).observe(stage);
+
+    for (const b of buttons) b.addEventListener('click', () => show(b.dataset.scene));
+    peek.addEventListener('click', () => {
+      const on = stage.classList.toggle('revealed');
+      peek.setAttribute('aria-pressed', String(on));
+      peek.textContent = on ? 'Blur it again' : 'Peek underneath';
+    });
+    show('vod');
+  </script>
+</body>
+</html>

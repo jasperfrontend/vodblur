@@ -18,7 +18,7 @@ The interface is in English and Dutch; it follows your browser's language.
 
 ## Install
 
-Install VOD Blur from [addons.mozilla.org](https://addons.mozilla.org/); Firefox keeps it up to date. (Up to 0.5.0 it was self-distributed as a signed `.xpi` in the GitHub Releases; from 0.5.1 on it's a public AMO add-on.)
+Install VOD Blur from [addons.mozilla.org](https://addons.mozilla.org/firefox/addon/vod-blur/); Firefox keeps it up to date. (Up to 0.5.0 it was self-distributed as a signed `.xpi` in the GitHub Releases; from 0.5.1 on it's a public AMO add-on.)
 
 To run from source instead:
 

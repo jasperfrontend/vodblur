@@ -28,9 +28,10 @@ HOW IT WORKS
 
 DETAILS
 • Sticks to the video: shapes follow the actual video picture, so they stay in place in theater mode, fullscreen and when you resize the window. You can also pin a shape to the window instead.
-• Edit any time: move, resize, nudge with the arrow keys, delete.
+• Edit any time: move, resize, nudge with the arrow keys, delete, or switch a single shape off without losing it.
+• Presets: save your usual setup (say, chat on the right) once and add it to any other video with one click.
 • Alt+Shift+H shows or hides all shapes for a moment.
-• An overview page lists every saved shape per site.
+• An overview page lists every saved shape and preset, and exports them to a file as a backup or to move them to another browser.
 • Available in English and Dutch.
 
 PRIVATE BY DESIGN

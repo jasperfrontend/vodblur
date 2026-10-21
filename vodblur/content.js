@@ -12,6 +12,7 @@
 
   const SVGNS = 'http://www.w3.org/2000/svg';
   const PREFS_KEY = 'prefs';
+  const PRESETS_KEY = 'presets';
   const MIN_SIZE = 8; // px, kleinere vormen worden genegeerd
   const DEFAULT_PREFS = {
     shape: 'rect', mode: 'blur', color: '#000000', opacity: 100, blur: 20, anchor: 'video', scope: 'section',
@@ -45,6 +46,7 @@
   let backup = null; // stand bij het openen van de editor, voor Annuleren
   let dirty = false;
   let prefs = { ...DEFAULT_PREFS };
+  let presets = []; // [{ id, name, masks }], vlakken zonder id en scope
   let hidden = false;
   let editing = false;
   let selected = null; // id van het gekozen vlak
@@ -102,13 +104,17 @@
 .olb { fill: none; stroke: rgba(0, 0, 0, .6); stroke-width: 3; }
 .olw { fill: none; stroke: rgba(255, 255, 255, .75); stroke-width: 1.5; stroke-dasharray: 6 4; }
 .olw.live { stroke: #bf94ff; }
+.olw.off { stroke: rgba(255, 255, 255, .45); stroke-dasharray: 2 5; }
 .olw.sel { stroke: #bf94ff; stroke-width: 2; stroke-dasharray: none; }
-.del {
+.olw.sel.off { stroke-dasharray: 6 4; }
+.del, .eye {
   position: absolute; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%;
   background: #e5484d; color: #fff; font: 700 15px/24px system-ui, sans-serif; text-align: center;
   cursor: pointer; pointer-events: auto; box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
 }
 .del:hover { background: #ff5f64; }
+.eye { display: flex; align-items: center; justify-content: center; background: #26262c; border: 1px solid #3a3a42; }
+.eye:hover { background: #34343b; }
 .hdl {
   position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; pointer-events: auto;
   background: #fff; border: 2px solid #9146ff; border-radius: 3px; box-shadow: 0 1px 4px rgba(0, 0, 0, .5);
@@ -139,6 +145,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .field { display: flex; align-items: center; gap: 10px; color: #adadb8; }
 .field output { min-width: 34px; color: #efeff1; font-variant-numeric: tabular-nums; }
 input[type="range"] { width: 130px; accent-color: #9146ff; }
+input[type="text"] {
+  height: 38px; width: 170px; padding: 0 10px; border-radius: 8px; border: 1px solid #3a3a42;
+  background: #26262c; color: #efeff1; font: inherit;
+}
 input[type="color"] {
   width: 38px; height: 38px; padding: 3px; border: 1px solid #3a3a42; border-radius: 8px;
   background: none; cursor: pointer;
@@ -238,6 +248,15 @@ select {
     </select>
   </div>
   <div class="row">
+    <span class="lbl">${t('presetLabel')}</span>
+    <select id="preset" title="${t('presetTitle')}"></select>
+    <button class="btn" id="presetSave" title="${t('presetSaveTitle')}">${t('presetSave')}</button>
+    <span class="field" id="presetForm" hidden>
+      <input type="text" id="presetName" maxlength="40" placeholder="${t('presetName')}">
+      <button class="btn primary" id="presetOk">${t('presetOk')}</button>
+    </span>
+  </div>
+  <div class="row">
     <button class="btn primary" id="save" disabled>${t('save')}</button>
     <button class="btn" id="cancel">${t('cancel')}</button>
     <button class="btn ghost" id="clear" title="${t('clearAllTitle')}">${t('clearAll')}</button>
@@ -247,6 +266,7 @@ select {
     <span id="hintDraw">${t('hintDraw')}</span>
     <span id="hintPick">${t('hintPick')}</span>
     <span id="hintEdit">${t('hintEdit')}</span>
+    <span id="hintOff" class="warn">${t('hintOff')}</span>
     <span id="hintNoVideo" class="warn">${t('hintNoVideo')}</span>
     <span id="hintMissing" class="warn">${t('hintMissing')}</span>
   </div>
@@ -635,7 +655,7 @@ select {
       const b = pxBox(m);
       if (!b) continue;
       shown.push([m, b]);
-      if (hidden) continue;
+      if (hidden || m.off) continue;
       if (m.anchor !== 'element') {
         fixed.push(maskEl(m, b));
         continue;
@@ -660,10 +680,10 @@ select {
       let sel = null;
       for (const [m, b] of shown) {
         if (m.id === selected) sel = [m, b];
-        else addOutline(ui.gSaved, outlinePath(m, b), '');
+        else addOutline(ui.gSaved, outlinePath(m, b), m.off ? 'off' : '');
       }
       if (sel) {
-        addOutline(ui.gSaved, outlinePath(...sel), 'sel');
+        addOutline(ui.gSaved, outlinePath(...sel), sel[0].off ? 'sel off' : 'sel');
         addHandles(...sel);
       }
     }
@@ -710,10 +730,30 @@ select {
     const del = el('button', 'del');
     del.textContent = '×';
     del.title = t('removeShape');
-    del.style.left = clamp(b.x + b.w - 32, 4, W - 28) + 'px';
-    del.style.top = clamp(b.y + 8, 4, H - 28) + 'px';
+    const x = clamp(b.x + b.w - 32, 4, W - 28), y = clamp(b.y + 8, 4, H - 28);
+    del.style.left = x + 'px';
+    del.style.top = y + 'px';
     del.addEventListener('click', () => removeMask(m.id));
-    ui.handles.append(del);
+    // Aan/uit naast het kruisje; tegen de linkerrand komt hij er rechts van.
+    const eye = el('button', 'eye');
+    eye.title = m.off ? t('showShape') : t('hideShape');
+    eye.append(eyeIcon(m.off));
+    eye.style.left = (x >= 32 ? x - 28 : x + 28) + 'px';
+    eye.style.top = y + 'px';
+    eye.addEventListener('click', () => toggleOff(m));
+    ui.handles.append(eye, del);
+  }
+
+  // Open oog als het vlak aan staat, doorgestreept als het uit staat.
+  function eyeIcon(off) {
+    const svg = svgEl('svg', { viewBox: '0 0 16 16', width: 14, height: 14 });
+    const line = { fill: 'none', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linecap': 'round' };
+    svg.append(
+      svgEl('path', { d: 'M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z', ...line }),
+      svgEl('circle', { cx: 8, cy: 8, r: 2, ...line }),
+    );
+    if (off) svg.append(svgEl('path', { d: 'M2.5 2.5l11 11', ...line }));
+    return svg;
   }
 
   function syncPanel() {
@@ -748,9 +788,11 @@ select {
     if (!picking) hidePick();
     ui.save.disabled = !dirty;
     ui.clear.disabled = masks.length === 0;
+    ui.presetSave.disabled = masks.length === 0;
     ui.hintDraw.hidden = !!sel || picking;
     ui.hintPick.hidden = !!sel || !picking;
     ui.hintEdit.hidden = !sel;
+    ui.hintOff.hidden = !sel?.off;
     ui.hintNoVideo.hidden = hasVideo || prefs.anchor !== 'video' || picking;
     ui.hintMissing.hidden = !masks.some((m) => m.anchor === 'element' && !elFrames[m.el.sel]);
   }
@@ -825,6 +867,15 @@ select {
     syncPanel();
   }
 
+  // Een uitgezet vlak blijft bewaard, maar verbergt niets tot je het weer aanzet.
+  function toggleOff(m) {
+    if (m.off) delete m.off;
+    else m.off = true;
+    dirty = true;
+    render();
+    syncPanel();
+  }
+
   function nudge(m, key, step) {
     const f = frameOf(m), b = pxBox(m);
     if (!f || !b) return;
@@ -874,6 +925,75 @@ select {
     closeEditor();
   }
 
+  // ---------------------------------------------------------------- presets
+
+  async function loadPresets() {
+    const res = await browser.storage.local.get(PRESETS_KEY);
+    presets = Array.isArray(res[PRESETS_KEY]) ? res[PRESETS_KEY] : [];
+    if (ui) syncPresets();
+  }
+
+  function syncPresets() {
+    const option = (value, text) => {
+      const o = document.createElement('option');
+      o.value = value;
+      o.textContent = text;
+      return o;
+    };
+    ui.preset.replaceChildren(
+      option('', presets.length ? t('presetPlaceholder') : t('presetNone')),
+      ...presets.map((p) => option(p.id, `${trunc(p.name, 30)} (${p.masks.length})`)),
+    );
+    ui.preset.value = '';
+    ui.preset.disabled = !presets.length;
+  }
+
+  // Voegt de vlakken van een preset toe, met nieuwe id's en de gekozen "Bewaren voor".
+  function applyPreset(id) {
+    const p = presets.find((x) => x.id === id);
+    ui.preset.value = '';
+    ui.preset.blur(); // anders vangt de keuzelijst Enter af in plaats van Opslaan
+    if (!p) return;
+    const added = p.masks.map((m) => ({ ...structuredClone(m), id: uid(), scope: prefs.scope }));
+    masks = [...masks, ...added];
+    selected = null;
+    dirty = true;
+    render();
+    syncPanel();
+  }
+
+  // Bewaart alle vlakken van de editor (ook nog niet opgeslagen) als preset; een bestaande naam wordt overschreven.
+  async function savePreset(name) {
+    const res = await browser.storage.local.get(PRESETS_KEY);
+    const list = Array.isArray(res[PRESETS_KEY]) ? res[PRESETS_KEY] : [];
+    const shapes = masks.map(({ id, scope, ...rest }) => structuredClone(rest));
+    const i = list.findIndex((p) => p.name === name);
+    const preset = { id: i >= 0 ? list[i].id : uid(), name, masks: shapes };
+    if (i >= 0) list[i] = preset;
+    else list.push(preset);
+    await browser.storage.local.set({ [PRESETS_KEY]: list });
+  }
+
+  function openPresetForm() {
+    ui.presetSave.hidden = true;
+    ui.presetForm.hidden = false;
+    ui.presetName.value = '';
+    ui.presetName.focus();
+  }
+
+  function closePresetForm() {
+    if (!ui) return;
+    ui.presetForm.hidden = true;
+    ui.presetSave.hidden = false;
+  }
+
+  function submitPreset() {
+    const name = ui.presetName.value.trim();
+    if (!name) return ui.presetName.focus();
+    if (masks.length) savePreset(name);
+    closePresetForm();
+  }
+
   function resetClear() {
     clearTimeout(clearTimer);
     clearTimer = null;
@@ -905,7 +1025,10 @@ select {
     const focus = ui.root.activeElement;
     const typing = !!focus && /^(INPUT|SELECT)$/.test(focus.tagName);
     const sel = selectedMask();
-    if (e.key === 'Escape') {
+    if (focus === ui.presetName && (e.key === 'Enter' || e.key === 'Escape')) {
+      if (e.key === 'Enter') submitPreset();
+      else closePresetForm();
+    } else if (e.key === 'Escape') {
       // Eerst tekenen afbreken, dan selectie opheffen, dan pas de editor sluiten.
       if (drag || sel) {
         drag = null;
@@ -923,6 +1046,8 @@ select {
       removeMask(sel.id);
     } else if (e.key.startsWith('Arrow') && sel) {
       nudge(sel, e.key, e.shiftKey ? 10 : 1);
+    } else if ((e.key === 'h' || e.key === 'H') && sel && !e.altKey && !e.ctrlKey && !e.metaKey) {
+      toggleOff(sel);
     } else {
       return;
     }
@@ -940,8 +1065,10 @@ select {
     backup = structuredClone(masks);
     ui.capture.hidden = false;
     ui.panel.hidden = false;
+    closePresetForm();
     render();
     syncPanel();
+    loadPresets();
     startLoop();
     window.addEventListener('keydown', onKey, true);
   }
@@ -958,6 +1085,7 @@ select {
     if (backup) masks = backup;
     backup = null;
     resetClear();
+    closePresetForm();
     window.removeEventListener('keydown', onKey, true);
     ui.capture.hidden = true;
     ui.capture.classList.remove('over');
@@ -1223,8 +1351,9 @@ select {
       grip: q('grip'), blurField: q('blurField'), colorField: q('colorField'),
       blur: q('blur'), blurOut: q('blurOut'), color: q('color'), pick: q('pick'), opacity: q('opacity'),
       opacityOut: q('opacityOut'), scope: q('scope'), save: q('save'), cancel: q('cancel'), clear: q('clear'),
-      manage: q('manage'), hintDraw: q('hintDraw'), hintPick: q('hintPick'), hintEdit: q('hintEdit'),
-      hintNoVideo: q('hintNoVideo'), hintMissing: q('hintMissing'),
+      manage: q('manage'), preset: q('preset'), presetSave: q('presetSave'), presetForm: q('presetForm'),
+      presetName: q('presetName'), presetOk: q('presetOk'), hintDraw: q('hintDraw'), hintPick: q('hintPick'),
+      hintEdit: q('hintEdit'), hintOff: q('hintOff'), hintNoVideo: q('hintNoVideo'), hintMissing: q('hintMissing'),
     };
     place();
     wire();
@@ -1255,6 +1384,13 @@ select {
     ui.cancel.addEventListener('click', closeEditor);
     ui.clear.addEventListener('click', clearAll);
     ui.manage.addEventListener('click', () => browser.runtime.sendMessage({ type: 'open-options' }));
+    ui.preset.addEventListener('change', () => applyPreset(ui.preset.value));
+    ui.presetSave.addEventListener('click', openPresetForm);
+    ui.presetOk.addEventListener('click', submitPreset);
+    // Typen in het naamveld mag geen sneltoetsen van de pagina zelf raken (YouTube: f = fullscreen, k = pauze).
+    for (const type of ['keydown', 'keypress', 'keyup']) {
+      ui.presetName.addEventListener(type, (e) => e.stopPropagation());
+    }
 
     // Paneel verslepen
     grip.addEventListener('pointerdown', (e) => {
@@ -1410,8 +1546,9 @@ select {
 
   // Tijdens het bewerken wint de editor; bij Opslaan wordt alles overschreven.
   browser.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local' || editing) return;
-    if (SCOPES.some((s) => keyFor(s) in changes)) loadMasks();
+    if (area !== 'local') return;
+    if (PRESETS_KEY in changes && ui) loadPresets();
+    if (!editing && SCOPES.some((s) => keyFor(s) in changes)) loadMasks();
   });
 
   browser.runtime.onMessage.addListener((msg) => {

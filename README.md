@@ -12,8 +12,11 @@ The interface is in English and Dutch; it follows your browser's language.
 - **Sticks to the video:** shapes are stored as percentages of the actual video picture (letterboxing excluded), so they stay in place in theatre mode, fullscreen and after resizing. You can also pin a shape to the browser window instead.
 - **Sticks to the page:** click the pick tool and then any part of a page (an address block, a chat list, a sidebar) to cover exactly that element; scroll to select the element around it. Drawn shapes can stick to the element underneath too (**Stick to: Element**). These shapes scroll along with the page, also inside scrolling boxes such as a chat list, and come back on reload as soon as the element appears, before it's painted.
 - **Edit afterwards:** click a shape to select it, drag to move, drag the corners to resize, nudge with the arrow keys (Shift = 10px), Delete to remove.
+- **Switch a shape off:** the eye button (or **H**) on a selected shape keeps it saved but makes it hide nothing, until you switch it back on.
 - **Choose where shapes apply:** this page (one video), this site section (e.g. `www.twitch.tv/videos`) or the whole site.
-- **Overview page:** see and delete saved shapes per site.
+- **Presets:** save the shapes on a page as a named preset (**Save as preset**) and add them to any other page from the **Preset** menu. Shapes stuck to the video or window work anywhere; shapes stuck to an element only where that element exists.
+- **Overview page:** see and delete saved shapes per site, and rename or delete presets.
+- **Export and import:** download all shapes and presets as a JSON file from the overview page, as a backup or to move them to another browser. Importing adds to what you have; nothing is overwritten except shapes with the same id.
 - **Quick toggle:** `Alt+Shift+H` hides or shows all shapes on the current page.
 
 ## Install

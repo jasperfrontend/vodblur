@@ -1,6 +1,13 @@
 # VOD Blur
 
+[![Firefox add-on](https://img.shields.io/amo/v/vod-blur?label=Firefox%20add-on&logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/firefox/addon/vod-blur/)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/pddbjjnckpkabideenkmlklcpnmfblmd?label=Chrome%20Web%20Store&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/vod-blur/pddbjjnckpkabideenkmlklcpnmfblmd)
+[![License: MIT](https://img.shields.io/github/license/jasperfrontend/vodblur)](LICENSE)
+
 A tiny Firefox and Chrome extension that lets you draw shapes over a page and blur or cover whatever is underneath. Built to hide burned-in live chat in stream VODs, so you can watch without getting distracted, but it works on any page.
+
+<a href="https://addons.mozilla.org/firefox/addon/vod-blur/"><img src=".github/badges/get-the-addon.svg" alt="Get the add-on for Firefox" height="58"></a>
+<a href="https://chromewebstore.google.com/detail/vod-blur/pddbjjnckpkabideenkmlklcpnmfblmd"><img src=".github/badges/chrome-web-store.png" alt="Available in the Chrome Web Store" height="58"></a>
 
 The interface is in English, Dutch and Japanese; it follows your browser's language.
 

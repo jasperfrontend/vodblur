@@ -53,8 +53,10 @@ function describe(masks) {
   if (video) parts.push(t('onVideo', String(video)));
   if (element) parts.push(t('onElement', String(element)));
   if (n - video - element) parts.push(t('onWindow', String(n - video - element)));
-  const text = `${n === 1 ? t('countOne') : t('countMany', String(n))} (${parts.join(', ')})`;
-  return off ? `${text}, ${t('countOff', String(off))}` : text;
+  // Scheidingsteken en haakjes komen uit _locales: Japans gebruikt 、 en （）.
+  const sep = t('listSep');
+  const text = t('countDetail', [n === 1 ? t('countOne') : t('countMany', String(n)), parts.join(sep)]);
+  return off ? text + sep + t('countOff', String(off)) : text;
 }
 
 // Knop die bij de eerste klik om bevestiging vraagt.

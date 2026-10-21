@@ -32,7 +32,7 @@ DETAILS
 • Presets: save your usual setup (say, chat on the right) once and add it to any other video with one click.
 • Alt+Shift+H shows or hides all shapes for a moment.
 • An overview page lists every saved shape and preset, and exports them to a file as a backup or to move them to another browser.
-• Available in English and Dutch.
+• Available in English, Dutch and Japanese.
 
 PRIVATE BY DESIGN
 No account, no analytics, no servers. Your shapes are stored in your own browser and never leave it. VOD Blur is open source (MIT): https://github.com/jasperfrontend/vodblur

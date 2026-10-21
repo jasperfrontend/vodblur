@@ -57,6 +57,8 @@
   "typeSite": { "message": "Whole site" },
   "countOne": { "message": "1 shape" },
   "countMany": { "message": "$1 shapes" },
+  "countDetail": { "message": "$1 ($2)" },
+  "listSep": { "message": ", " },
   "onVideo": { "message": "$1 on video" },
   "onElement": { "message": "$1 on page element" },
   "onWindow": { "message": "$1 on window" },

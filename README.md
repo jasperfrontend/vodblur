@@ -2,7 +2,7 @@
 
 A tiny Firefox and Chrome extension that lets you draw shapes over a page and blur or cover whatever is underneath. Built to hide burned-in live chat in stream VODs, so you can watch without getting distracted, but it works on any page.
 
-The interface is in English and Dutch; it follows your browser's language.
+The interface is in English, Dutch and Japanese; it follows your browser's language.
 
 ## Features
 
